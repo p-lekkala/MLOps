@@ -1,0 +1,119 @@
+parameters:
+  - name: service_connection
+  - name: variable_group
+
+jobs:
+  - deployment: deploy_infra
+    displayName: Infrastructure deployment
+    environment: $(environment)
+    dependsOn: build_infra
+
+    variables:
+      - group: ${{ parameters.variable_group }}
+
+      - template: ../variables.yml
+
+      - name: resource_group_name
+        value: $(environment)-$(namespace)-rg
+
+      - name: ml_workspace_name
+        value: mlw$(environment)$(namespace)
+
+      - name: storage_name
+        value: str$(environment)$(namespace)
+
+      - name: key_vault_name
+        value: kv$(environment)$(namespace)
+
+      - name: app_insights_name
+        value: ai$(environment)$(namespace)
+
+      - name: container_registry_name
+        value: cr$(environment)$(namespace)
+
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - download: current
+              artifact: infrastructure
+
+            - task: AzureCLI@2
+              displayName: Install azure-ml-cli
+              inputs:
+                scriptType: bash
+                azureSubscription: $(service_connection)
+                scriptLocation: inlineScript
+                inlineScript: |
+                  az account show | jq ".id"
+                  az account show
+
+            - task: AzureResourceGroupDeployment@2
+              displayName: Deploy storage account
+              inputs:
+                azureSubscription: $(service_connection)
+                resourceGroupName: $(resource_group_name)
+                location: $(location)
+                csmFile: $(Pipeline.Workspace)/infrastructure/storage.json
+                csmParametersFile: "$(Pipeline.Workspace)/infrastructure/storage.parameters.json"
+                overrideParameters: -name $(storage_name) -location $(location)
+
+            - task: AzureResourceGroupDeployment@2
+              displayName: Deploy key vault
+              inputs:
+                azureSubscription: $(service_connection)
+                resourceGroupName: $(resource_group_name)
+                location: $(location)
+                csmFile: $(Pipeline.Workspace)/infrastructure/keyvault.json
+                csmParametersFile: "$(Pipeline.Workspace)/infrastructure/keyvault.parameters.json"
+                overrideParameters: -name $(key_vault_name) -location $(location)
+
+            - task: AzureResourceGroupDeployment@2
+              displayName: Deploy application insights
+              inputs:
+                azureSubscription: $(service_connection)
+                resourceGroupName: $(resource_group_name)
+                location: $(location)
+                csmFile: $(Pipeline.Workspace)/infrastructure/appinsights.json
+                csmParametersFile: "$(Pipeline.Workspace)/infrastructure/appinsights.parameters.json"
+                overrideParameters: -name $(app_insights_name) -location $(location)
+
+            - task: AzureResourceGroupDeployment@2
+              displayName: Deploy container registry
+              inputs:
+                azureSubscription: $(service_connection)
+                resourceGroupName: $(resource_group_name)
+                location: $(location)
+                csmFile: $(Pipeline.Workspace)/infrastructure/containerregistry.json
+                csmParametersFile: "$(Pipeline.Workspace)/infrastructure/containerregistry.parameters.json"
+                overrideParameters: -name $(container_registry_name) -location $(location)
+
+            - task: AzureResourceGroupDeployment@2
+              displayName: Deploy AML workspace
+              inputs:
+                azureSubscription: $(service_connection)
+                resourceGroupName: $(resource_group_name)
+                location: $(location)
+                csmFile: $(Pipeline.Workspace)/infrastructure/mlworkspace.json
+                csmParametersFile: "$(Pipeline.Workspace)/infrastructure/mlworkspace.parameters.json"
+                overrideParameters: -workspaceName $(ml_workspace_name) -keyVaultName $(key_vault_name) -appInsightsName $(app_insights_name) -containerRegistryName $(container_registry_name) -storageAccountName $(storage_name) -location $(location) -sku $(aml_sku)
+
+            - task: AzureResourceGroupDeployment@2
+              displayName: Create inference cluster
+              inputs:
+                azureSubscription: $(service_connection)
+                resourceGroupName: $(resource_group_name)
+                location: $(location)
+                csmFile: $(Pipeline.Workspace)/infrastructure/inference-cluster.json
+                csmParametersFile: "$(Pipeline.Workspace)/infrastructure/inference-cluster.parameters.json"
+                overrideParameters: -workspaceName $(ml_workspace_name) -clusterName $(inference_cluster_name) -location $(location)
+
+            - task: AzureResourceGroupDeployment@2
+              displayName: Create compute cluster
+              inputs:
+                azureSubscription: $(service_connection)
+                resourceGroupName: $(resource_group_name)
+                location: $(location)
+                csmFile: $(Pipeline.Workspace)/infrastructure/compute-cluster.json
+                csmParametersFile: "$(Pipeline.Workspace)/infrastructure/compute-cluster.parameters.json"
+                overrideParameters: -workspaceName $(ml_workspace_name) -clusterName $(compute_cluster_name) -location $(location)

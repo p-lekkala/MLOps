@@ -1,0 +1,14 @@
+variables:
+  # DEPLOY
+  - name: compute_cluster_name
+    value: cpu-cluster
+
+  - name: inference_cluster_name
+    value: aks-cluster
+
+  # SETUP
+  - name: blob_contianer_name
+    value: batch-score
+
+  - name: datastore_name
+    value: batch_score
