@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "accountType": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string"
+    }
+  },
+  "variables": {},
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2018-07-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('accountType')]"
+      },
+      "kind": "[parameters('kind')]",
+      "properties": {
+        "encryption": {
+          "services": {
+            "blob": {
+              "enabled": true
+            },
+            "file": {
+              "enabled": true
+            }
+          },
+          "keySource": "Microsoft.Storage"
+        },
+        "supportsHttpsTrafficOnly": true
+      }
+    }
+  ]
+}

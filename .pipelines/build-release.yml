@@ -1,0 +1,34 @@
+name: build-release - $(SourceBranchName) - $(Date:yyyyMMdd)$(Rev:.r) -
+pool:
+  vmImage: ubuntu-latest
+
+trigger:
+  branches:
+    include:
+      - master
+    exclude:
+      - docs/*
+      - LICENSE
+      - README.md
+
+variables:
+  - group: aml-deployment-templates
+
+stages:
+  - stage: setup_infra
+    displayName: Setup Infrastructure
+    jobs:
+      - template: ./templates/infra-build.yml
+      - template: ./templates/infra-deploy.yml
+        parameters:
+          variable_group: aml-deployment-templates
+          service_connection: $(service_connection)
+
+  - stage: setup_data
+    displayName: Setup Data
+    dependsOn: setup_infra
+    jobs:
+      - template: ./templates/setup-data.yml
+        parameters:
+          variable_group: aml-deployment-templates
+          service_connection: $(service_connection)
